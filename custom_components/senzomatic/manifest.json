@@ -1,0 +1,13 @@
+{
+  "domain": "senzomatic",
+  "name": "Senzomatic",
+  "codeowners": ["@stlk"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/stlk/senzomatic-ha",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/stlk/senzomatic-ha/issues",
+  "requirements": [],
+  "version": "1.0.0"
+} 

@@ -1,0 +1,74 @@
+{
+  "devices": [
+    {
+      "uuid": "423bd6d3-1e16-4267-bf66-0009fdfa6814",
+      "name": "1 -",
+      "model": "MHT04",
+      "id": "423bd6d3-1e16-4267-bf66-0009fdfa6814"
+    },
+    {
+      "uuid": "a48b5d5c-5b00-4cd3-9f74-32589c681cf9",
+      "name": "2 - 1.05 d\u0159ez, my\u010dka",
+      "model": "MHT04",
+      "id": "a48b5d5c-5b00-4cd3-9f74-32589c681cf9"
+    },
+    {
+      "uuid": "42a53452-ca2a-4452-9f2d-a3112c3c8e83",
+      "name": "3 - pra\u010dka pod schody",
+      "model": "HT03",
+      "id": "42a53452-ca2a-4452-9f2d-a3112c3c8e83"
+    },
+    {
+      "uuid": "217507fd-b9c1-471e-a804-ebb1b118fdf4",
+      "name": "5 - 2.02 vana",
+      "model": "HT03",
+      "id": "217507fd-b9c1-471e-a804-ebb1b118fdf4"
+    },
+    {
+      "uuid": "7df4ca91-f5c1-4a7f-bca8-683d07601318",
+      "name": "7 - HT - Interi\u00e9r",
+      "model": "HT03",
+      "id": "7df4ca91-f5c1-4a7f-bca8-683d07601318"
+    },
+    {
+      "uuid": "b85e6414-f359-4840-b016-919d0f4eb10c",
+      "name": "6 - HT - Exteri\u00e9r",
+      "model": "HT03",
+      "id": "b85e6414-f359-4840-b016-919d0f4eb10c"
+    }
+  ],
+  "sensors": {
+    "423bd6d3-1e16-4267-bf66-0009fdfa6814": {
+      "temperature_ambient_celsius": 19.05,
+      "rel_humidity_ambient_pct": 73.06,
+      "abs_humidity_ambient_gm3": 11.92,
+      "moisture": 16.32
+    },
+    "a48b5d5c-5b00-4cd3-9f74-32589c681cf9": {
+      "temperature_ambient_celsius": 19.94,
+      "rel_humidity_ambient_pct": 74.31,
+      "abs_humidity_ambient_gm3": 12.76,
+      "moisture": 17.0
+    },
+    "42a53452-ca2a-4452-9f2d-a3112c3c8e83": {
+      "temperature_ambient_celsius": 15.66,
+      "rel_humidity_ambient_pct": 100.0,
+      "abs_humidity_ambient_gm3": 13.32
+    },
+    "217507fd-b9c1-471e-a804-ebb1b118fdf4": {
+      "temperature_ambient_celsius": 24.3,
+      "rel_humidity_ambient_pct": 45.81,
+      "abs_humidity_ambient_gm3": 10.11
+    },
+    "7df4ca91-f5c1-4a7f-bca8-683d07601318": {
+      "temperature_ambient_celsius": 23.46,
+      "rel_humidity_ambient_pct": 60.23,
+      "abs_humidity_ambient_gm3": 12.67
+    },
+    "b85e6414-f359-4840-b016-919d0f4eb10c": {
+      "temperature_ambient_celsius": 20.9,
+      "rel_humidity_ambient_pct": 74.5,
+      "abs_humidity_ambient_gm3": 13.53
+    }
+  }
+}
