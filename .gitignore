@@ -167,3 +167,5 @@ deps/
 tts/
 secrets.yaml
 known_devices.yaml
+
+senzomatic_test_results.json

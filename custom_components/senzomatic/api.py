@@ -53,6 +53,7 @@ class SenzomaticAPI:
                 token_match = re.search(r'name="authenticity_token" value="([^"]*)"', content)
                 if not token_match:
                     _LOGGER.error("Could not find authenticity token")
+                    _LOGGER.error("Content: %s", content)
                     return False
                 
                 authenticity_token = token_match.group(1)
