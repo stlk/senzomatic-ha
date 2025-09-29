@@ -49,15 +49,23 @@ class SenzomaticAPI:
                     return False
                 
                 content = await response.text()
-                # Extract authenticity token from the form
-                token_match = re.search(r'name="authenticity_token" value="([^"]*)"', content)
-                if not token_match:
-                    _LOGGER.error("Could not find authenticity token")
-                    _LOGGER.error("Content: %s", content)
-                    return False
-                
-                authenticity_token = token_match.group(1)
-                _LOGGER.debug("Found authenticity token: %s", authenticity_token[:10] + "...")
+                # Extract authenticity token from hidden input or meta tags
+                authenticity_token = None
+
+                # Try hidden input first
+                token_match = re.search(r'name="authenticity_token"\s+value="([^"]*)"', content, re.IGNORECASE)
+                if token_match:
+                    authenticity_token = token_match.group(1)
+                    _LOGGER.debug("Found authenticity token in hidden input: %s", authenticity_token[:10] + "...")
+                else:
+                    meta_token_match = re.search(r'<meta\s+name="csrf-token"\s+content="([^"]+)"\s*/?>', content, re.IGNORECASE)
+                    if meta_token_match:
+                        authenticity_token = meta_token_match.group(1)
+                        _LOGGER.debug("Found authenticity token in meta tag: %s", authenticity_token[:10] + "...")
+                    else:
+                        _LOGGER.error("Could not find authenticity token (no hidden input or meta tag)")
+                        _LOGGER.error("Content: %s", content)
+                        return False
 
             # Step 2: Submit login form
             _LOGGER.debug("Submitting login form...")
