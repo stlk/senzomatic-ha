@@ -20,28 +20,51 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Senzomatic from a config entry."""
-    session = async_get_clientsession(hass)
-    api = SenzomaticAPI(
-        session, 
-        entry.data["username"], 
-        entry.data["password"],
-        entry.data[CONF_OAUTH_CLIENT_ID]
-    )
+    _LOGGER.info("Setting up Senzomatic integration for entry: %s", entry.entry_id)
     
-    coordinator = SenzomaticDataUpdateCoordinator(hass, api)
-    
-    await coordinator.async_config_entry_first_refresh()
-    
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-    
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    
-    return True
+    try:
+        session = async_get_clientsession(hass)
+        api = SenzomaticAPI(
+            session, 
+            entry.data["username"], 
+            entry.data["password"],
+            entry.data[CONF_OAUTH_CLIENT_ID]
+        )
+        
+        coordinator = SenzomaticDataUpdateCoordinator(hass, api)
+        
+        _LOGGER.debug("Performing initial data refresh...")
+        await coordinator.async_config_entry_first_refresh()
+        _LOGGER.info("Initial data refresh completed successfully")
+        
+        hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+        
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        
+        _LOGGER.info("Senzomatic integration setup completed successfully")
+        return True
+    except Exception as exception:
+        _LOGGER.error(
+            "Failed to set up Senzomatic integration: %s",
+            exception,
+            exc_info=True
+        )
+        raise
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    _LOGGER.info("Unloading Senzomatic integration for entry: %s", entry.entry_id)
+    
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+        coordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        _LOGGER.info(
+            "Senzomatic integration unloaded successfully (requests: %d, failed: %d)",
+            coordinator.api._request_count,
+            coordinator.api._failed_request_count
+        )
+    else:
+        _LOGGER.error("Failed to unload Senzomatic integration platforms")
+    
     return unload_ok
 
 class SenzomaticDataUpdateCoordinator(DataUpdateCoordinator):
@@ -60,6 +83,26 @@ class SenzomaticDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Update data via library."""
         try:
-            return await self.api.async_get_data()
+            _LOGGER.debug("Starting coordinator data update")
+            data = await self.api.async_get_data()
+            
+            # Log summary of what we got
+            if data:
+                device_count = len(data.get("devices", []))
+                sensor_count = len(data.get("sensors", {}))
+                _LOGGER.debug(
+                    "Coordinator update successful: %d devices, %d sensor sets",
+                    device_count,
+                    sensor_count
+                )
+            else:
+                _LOGGER.warning("Coordinator update returned empty data")
+            
+            return data
         except Exception as exception:
-            raise UpdateFailed() from exception 
+            _LOGGER.error(
+                "Failed to update data from Senzomatic API: %s",
+                exception,
+                exc_info=True
+            )
+            raise UpdateFailed(f"Error communicating with API: {exception}") from exception 

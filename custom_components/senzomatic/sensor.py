@@ -37,6 +37,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
+    _LOGGER.debug("Setting up sensor platform for entry: %s", config_entry.entry_id)
+    
     coordinator: SenzomaticDataUpdateCoordinator = hass.data[DOMAIN][
         config_entry.entry_id
     ]
@@ -45,13 +47,31 @@ async def async_setup_entry(
 
     # Wait for first data fetch
     if coordinator.data and "devices" in coordinator.data:
+        _LOGGER.debug(
+            "Coordinator has data with %d devices",
+            len(coordinator.data["devices"])
+        )
+        
         for device in coordinator.data["devices"]:
             device_id = device["id"]
             device_name = device["name"]
             device_model = device["model"]
 
+            _LOGGER.debug(
+                "Processing device: %s (id=%s..., model=%s)",
+                device_name,
+                device_id[:8],
+                device_model
+            )
+
             # Check which sensors have data for this device
             sensor_data = coordinator.data.get("sensors", {}).get(device_id, {})
+            _LOGGER.debug(
+                "Device %s has %d sensor metrics: %s",
+                device_name,
+                len(sensor_data),
+                list(sensor_data.keys())
+            )
 
             # Temperature sensor
             if SENSOR_TEMPERATURE in sensor_data:
@@ -68,6 +88,7 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                     )
                 )
+                _LOGGER.debug("Added temperature sensor for %s", device_name)
 
             # Relative humidity sensor
             if SENSOR_REL_HUMIDITY in sensor_data:
@@ -84,6 +105,7 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                     )
                 )
+                _LOGGER.debug("Added relative humidity sensor for %s", device_name)
 
             # Absolute humidity sensor
             if SENSOR_ABS_HUMIDITY in sensor_data:
@@ -100,6 +122,7 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                     )
                 )
+                _LOGGER.debug("Added absolute humidity sensor for %s", device_name)
 
             # Moisture sensor (only for devices that support it)
             if SENSOR_MOISTURE in sensor_data:
@@ -116,7 +139,14 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                     )
                 )
+                _LOGGER.debug("Added moisture sensor for %s", device_name)
+    else:
+        _LOGGER.warning(
+            "No coordinator data available during sensor setup (data=%s)",
+            coordinator.data
+        )
 
+    _LOGGER.info("Adding %d sensor entities", len(entities))
     async_add_entities(entities)
 
 class SenzomaticSensor(CoordinatorEntity, SensorEntity):
@@ -146,6 +176,14 @@ class SenzomaticSensor(CoordinatorEntity, SensorEntity):
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = device_class
         self._attr_state_class = state_class
+        self._last_availability = None
+        
+        _LOGGER.debug(
+            "Initialized sensor: %s (device_id=%s..., type=%s)",
+            self._attr_name,
+            device_id[:8],
+            sensor_type
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -162,21 +200,63 @@ class SenzomaticSensor(CoordinatorEntity, SensorEntity):
     def native_value(self) -> float | None:
         """Return the native value of the sensor."""
         if not self.coordinator.data:
+            _LOGGER.debug(
+                "No coordinator data for sensor %s",
+                self._attr_name
+            )
             return None
             
         sensor_data = self.coordinator.data.get("sensors", {}).get(self._device_id, {})
         value = sensor_data.get(self._sensor_type)
         
         if value is not None:
-            return round(float(value), 2)
+            rounded_value = round(float(value), 2)
+            _LOGGER.debug(
+                "Sensor %s updated: %.2f %s",
+                self._attr_name,
+                rounded_value,
+                self._attr_native_unit_of_measurement
+            )
+            return rounded_value
+        else:
+            _LOGGER.debug(
+                "No value available for sensor %s (type=%s, device_id=%s...)",
+                self._attr_name,
+                self._sensor_type,
+                self._device_id[:8]
+            )
         
         return None
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return (
+        is_available = (
             self.coordinator.last_update_success
             and self.coordinator.data is not None
             and self._device_id in self.coordinator.data.get("sensors", {})
-        ) 
+        )
+        
+        # Log availability changes
+        if self._last_availability is not None and self._last_availability != is_available:
+            if is_available:
+                _LOGGER.info(
+                    "Sensor %s became AVAILABLE (device_id=%s..., type=%s)",
+                    self._attr_name,
+                    self._device_id[:8],
+                    self._sensor_type
+                )
+            else:
+                _LOGGER.warning(
+                    "Sensor %s became UNAVAILABLE (device_id=%s..., type=%s, "
+                    "last_update_success=%s, data_present=%s, device_in_sensors=%s)",
+                    self._attr_name,
+                    self._device_id[:8],
+                    self._sensor_type,
+                    self.coordinator.last_update_success,
+                    self.coordinator.data is not None,
+                    self._device_id in self.coordinator.data.get("sensors", {}) if self.coordinator.data else False
+                )
+        
+        self._last_availability = is_available
+        return is_available 
