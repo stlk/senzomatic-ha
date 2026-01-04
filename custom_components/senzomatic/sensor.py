@@ -118,7 +118,7 @@ async def async_setup_entry(
                         sensor_type=SENSOR_ABS_HUMIDITY,
                         name="Absolute Humidity",
                         unit=UNIT_GRAMS_PER_M3,
-                        device_class=SensorDeviceClass.HUMIDITY,
+                        device_class=None,
                         state_class=SensorStateClass.MEASUREMENT,
                     )
                 )

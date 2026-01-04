@@ -48,6 +48,10 @@ class SenzomaticAPI:
         self._request_count = 0
         self._failed_request_count = 0
         _LOGGER.info("Senzomatic API client initialized for user: %s", username)
+        _LOGGER.debug(
+            "Session SSL context: %s", 
+            "custom" if hasattr(session.connector, '_ssl') else "shared"
+        )
 
     def _is_session_valid(self) -> bool:
         """Check if the current session is still valid."""

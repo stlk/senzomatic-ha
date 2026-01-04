@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import asyncio
+import certifi
 import logging
+import ssl
 from datetime import timedelta
+
+import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -23,7 +27,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.info("Setting up Senzomatic integration for entry: %s", entry.entry_id)
     
     try:
-        session = async_get_clientsession(hass)
+        # Create custom session with up-to-date SSL context
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        session = aiohttp.ClientSession(connector=connector)
+        _LOGGER.debug("Created custom ClientSession with certifi CA bundle: %s", certifi.where())
+        
         api = SenzomaticAPI(
             session, 
             entry.data["username"], 
@@ -57,6 +66,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         coordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        
+        # Close the custom session
+        await coordinator.api.session.close()
+        _LOGGER.debug("Closed custom ClientSession")
+        
         _LOGGER.info(
             "Senzomatic integration unloaded successfully (requests: %d, failed: %d)",
             coordinator.api._request_count,
