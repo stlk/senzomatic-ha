@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 MAX_RETRIES = 3
 RETRY_BACKOFF_BASE = 2  # seconds
 REQUEST_TIMEOUT = 30  # seconds
-SESSION_VALIDITY_HOURS = 23  # Re-authenticate before 24h expiry
+SESSION_VALIDITY_HOURS = 8  # Re-authenticate proactively to avoid session expiration
 
 class SenzomaticAPI:
     """API client for Senzomatic system."""
@@ -47,6 +47,7 @@ class SenzomaticAPI:
         self.last_auth_time = None
         self._request_count = 0
         self._failed_request_count = 0
+        self._last_device_count = 0  # Track last successful device count
         _LOGGER.info("Senzomatic API client initialized for user: %s", username)
         _LOGGER.debug(
             "Session SSL context: %s", 
@@ -490,9 +491,35 @@ class SenzomaticAPI:
                     total_time
                 )
                 
+                # Smart re-authentication: If we found 0 devices but previously had devices,
+                # the session likely expired even though our local timer says it's valid
+                if not devices and self._last_device_count > 0:
+                    _LOGGER.warning(
+                        "Found 0 devices but previously had %d devices. "
+                        "Session may have expired on server side. Attempting re-authentication...",
+                        self._last_device_count
+                    )
+                    self._mark_authentication_failure()
+                    
+                    # Try re-authentication and retry the request once
+                    if await self.async_authenticate():
+                        _LOGGER.info("Re-authentication successful, retrying device list fetch")
+                        # Recursive call to retry - but only once (authenticated flag prevents infinite loop)
+                        retry_devices = await self.async_get_device_list()
+                        if retry_devices:
+                            _LOGGER.info("Successfully retrieved %d devices after re-authentication", len(retry_devices))
+                            self._last_device_count = len(retry_devices)
+                        return retry_devices
+                    else:
+                        _LOGGER.error("Re-authentication failed, returning empty device list")
+                        return []
+                
                 if not devices:
                     _LOGGER.warning("No devices found in dashboard - this may be an issue")
                     _LOGGER.debug("Content excerpt (first 500 chars): %s", content[:500])
+                else:
+                    # Update last successful device count
+                    self._last_device_count = len(devices)
                 
                 return devices
 
