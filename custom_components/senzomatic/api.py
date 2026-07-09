@@ -286,9 +286,9 @@ class SenzomaticAPI:
                     id_patterns = [
                         r'installation[_-]?id["\']?\s*[=:]\s*["\']?([a-f0-9-]+)',
                         r'charts/([a-f0-9-]+)',
-                        r'vmproxy\.mgrd\.cz/api/v1/([a-f0-9-]+)',
+                        r'vmproxy\.(?:mgrd\.cz|senzomatic\.com)/api/v1/([a-f0-9-]+)',
                     ]
-                    
+
                     for pattern in id_patterns:
                         match = re.search(pattern, content, re.IGNORECASE)
                         if match:
@@ -338,7 +338,7 @@ class SenzomaticAPI:
                                 r'/charts/([a-f0-9-]{36})',  # UUID format
                                 r'charts/([a-f0-9-]+)',
                                 r'installation[_-]?id["\']?\s*[=:]\s*["\']?([a-f0-9-]+)',
-                                r'vmproxy\.mgrd\.cz/api/v1/([a-f0-9-]+)',
+                                r'vmproxy\.(?:mgrd\.cz|senzomatic\.com)/api/v1/([a-f0-9-]+)',
                                 r'data-installation-id["\']?\s*=\s*["\']([a-f0-9-]+)',
                             ]
                             

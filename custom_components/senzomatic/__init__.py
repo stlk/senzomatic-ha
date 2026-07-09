@@ -28,7 +28,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     try:
         # Create custom session with up-to-date SSL context
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        ssl_context = await hass.async_add_executor_job(
+            lambda: ssl.create_default_context(cafile=certifi.where())
+        )
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         session = aiohttp.ClientSession(connector=connector)
         _LOGGER.debug("Created custom ClientSession with certifi CA bundle: %s", certifi.where())

@@ -8,10 +8,10 @@ CONF_PASSWORD = "password"
 CONF_OAUTH_CLIENT_ID = "oauth_client_id"
 
 # API URLs based on the network analysis
-LOGIN_URL = "https://erp.mgrd.cz/cs/users/sign_in"
-OAUTH_AUTHORIZE_URL = "https://erp.mgrd.cz/oauth/authorize"
-DASHBOARD_BASE_URL = "https://dashboards.mgrd.cz"
-VMPROXY_BASE_URL = "https://vmproxy.mgrd.cz/api/v1"
+LOGIN_URL = "https://erp.senzomatic.com/cs/users/sign_in"
+OAUTH_AUTHORIZE_URL = "https://erp.senzomatic.com/oauth/authorize"
+DASHBOARD_BASE_URL = "https://dashboards.senzomatic.com"
+VMPROXY_BASE_URL = "https://vmproxy.senzomatic.com/api/v1"
 
 # Device models
 DEVICE_MODEL_MHT02 = "MHT02"
