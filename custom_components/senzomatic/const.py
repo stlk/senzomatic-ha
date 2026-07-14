@@ -3,14 +3,9 @@
 DOMAIN = "senzomatic"
 
 # Configuration
-CONF_USERNAME = "username"
-CONF_PASSWORD = "password"
-CONF_OAUTH_CLIENT_ID = "oauth_client_id"
+CONF_HOST = "host"
 
-# API URLs based on the network analysis
-LOGIN_URL = "https://erp.senzomatic.com/cs/users/sign_in"
-OAUTH_AUTHORIZE_URL = "https://erp.senzomatic.com/oauth/authorize"
-DASHBOARD_BASE_URL = "https://dashboards.senzomatic.com"
+# Cloud VictoriaMetrics proxy (queried with the unit's local JWT)
 VMPROXY_BASE_URL = "https://vmproxy.senzomatic.com/api/v1"
 
 # Device models

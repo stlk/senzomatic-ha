@@ -12,11 +12,12 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import SenzomaticAPI
-from .const import DOMAIN, CONF_OAUTH_CLIENT_ID
+from .const import DOMAIN, CONF_HOST
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +26,11 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Senzomatic from a config entry."""
     _LOGGER.info("Setting up Senzomatic integration for entry: %s", entry.entry_id)
-    
+
+    # Pre-2.0 entries stored credentials, not a host. Prompt for the IP via reauth.
+    if CONF_HOST not in entry.data:
+        raise ConfigEntryAuthFailed("Central Unit IP address required")
+
     try:
         # Create custom session with up-to-date SSL context
         ssl_context = await hass.async_add_executor_job(
@@ -35,12 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         session = aiohttp.ClientSession(connector=connector)
         _LOGGER.debug("Created custom ClientSession with certifi CA bundle: %s", certifi.where())
         
-        api = SenzomaticAPI(
-            session, 
-            entry.data["username"], 
-            entry.data["password"],
-            entry.data[CONF_OAUTH_CLIENT_ID]
-        )
+        api = SenzomaticAPI(session, entry.data[CONF_HOST])
         
         coordinator = SenzomaticDataUpdateCoordinator(hass, api)
         
