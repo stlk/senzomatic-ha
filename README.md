@@ -44,6 +44,9 @@ This custom integration allows you to monitor your Senzomatic moisture guard sen
            ├── manifest.json
            ├── sensor.py
            ├── strings.json
+           ├── brand/
+           │   ├── icon.png
+           │   └── logo.png
            └── translations/
                └── en.json
    ```
