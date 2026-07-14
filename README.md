@@ -5,18 +5,25 @@ This custom integration allows you to monitor your Senzomatic moisture guard sen
 ## Features
 
 - **Temperature monitoring** - Ambient temperature from all sensors
-- **Humidity monitoring** - Both relative and absolute humidity measurements  
+- **Humidity monitoring** - Both relative and absolute humidity measurements
 - **Moisture monitoring** - Wood moisture content (for compatible sensors)
-- **Automatic device discovery** - Finds all sensors in your installation
+- **Automatic device discovery** - Reads the device list straight from your Central Unit
 - **Real-time updates** - Data refreshed every 5 minutes
 - **Native Home Assistant entities** - Proper device classes and units
+
+## Requirements
+
+- A Senzomatic **Central Unit** reachable on your local network (you'll need its IP address).
+- The Central Unit must have been activated and be online (it needs internet access to push data to the cloud, which this integration reads back).
+
+> Tip: give the Central Unit a static IP or DHCP reservation on your router. If its IP changes you can update it via **Reconfigure** without losing history.
 
 ## Installation
 
 ### HACS Installation (Recommended)
 
 1. Add this repository to HACS as a custom repository:
-   
+
    [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=stlk&repository=senzomatic-ha&category=integration)
 
 2. Search for "Senzomatic" in HACS and install
@@ -36,26 +43,37 @@ This custom integration allows you to monitor your Senzomatic moisture guard sen
            ├── const.py
            ├── manifest.json
            ├── sensor.py
-           └── strings.json
+           ├── strings.json
+           └── translations/
+               └── en.json
    ```
 
 2. Restart Home Assistant
 
-3. Go to Configuration > Integrations
+3. Go to Settings → Devices & Services
 
-4. Click the "+" button and search for "Senzomatic"
+4. Click **Add Integration** and search for "Senzomatic"
 
-5. Enter your Senzomatic login credentials (same as for erp.mgrd.cz)
+5. Enter the **IP address** of your Central Unit (e.g. `192.168.1.230`)
+
+## Configuration
+
+The integration is configured through the Home Assistant UI. You only need to provide:
+
+- **IP address**: the local address of your Senzomatic Central Unit.
+
+### Changing the IP address
+
+If the Central Unit's address changes, open the integration and choose **Reconfigure** to enter the new IP. The device identity is tracked by its Central Unit ID (not the IP), so your entities and their history are preserved.
 
 ## How it Works
 
-The integration works by:
+1. **Bootstrap**: fetches `http://<central-unit-ip>/var/config.json`, which exposes the unit's long-lived access token (JWT) and the list of attached devices.
+2. **Device discovery**: builds Home Assistant devices from that config (UUID, model, and the display name you set in the Senzomatic portal).
+3. **Data retrieval**: queries the cloud VictoriaMetrics proxy for each metric, authenticating with the unit's JWT.
+4. **Entity creation**: creates a Home Assistant sensor entity per measurement type, per device.
 
-1. **Authentication**: Logs into the Senzomatic web portal using your credentials
-2. **OAuth Flow**: Follows the same OAuth flow as the web interface  
-3. **Device Discovery**: Parses the dashboard HTML to find your sensors
-4. **Data Retrieval**: Queries the VictoriaMetrics API endpoints for sensor data
-5. **Entity Creation**: Creates Home Assistant sensor entities for each measurement type
+> **Note:** while the token and device list come from the Central Unit on your LAN, sensor *values* are read from Senzomatic's cloud (VictoriaMetrics). The Central Unit does not expose historical values locally, so this integration still requires internet access. It is classified as `cloud_polling`.
 
 ## Supported Sensors
 
@@ -68,71 +86,51 @@ The integration works by:
 For each device, the following sensors may be available:
 
 - **Temperature** (°C) - Ambient temperature
-- **Relative Humidity** (%) - Relative humidity percentage  
+- **Relative Humidity** (%) - Relative humidity percentage
 - **Absolute Humidity** (g/m³) - Absolute humidity in grams per cubic meter
 - **Wood Moisture** (%) - Moisture content in wood (MHT units only)
 
-## Configuration
-
-The integration is configured through the Home Assistant UI. You only need to provide:
-
-- **Email**: Your Senzomatic account email
-- **Password**: Your Senzomatic account password
-
 ## API Details
 
-This integration reverse-engineers the Senzomatic web interface:
+### Bootstrap (local)
+- `GET http://<central-unit-ip>/var/config.json`
+- Provides `global.jwt_token` (the access token) and the `devices` map (UUID, `type`, `display_name`).
+- The Central Unit UUID (parsed from the config's cloud URLs) is used as the stable Home Assistant unique ID.
 
-### Authentication Flow
-1. `GET https://erp.mgrd.cz/users/sign_in` - Get login form with CSRF token
-2. `POST https://erp.mgrd.cz/cs/users/sign_in` - Submit credentials  
-3. OAuth redirect to `https://dashboards.mgrd.cz/oauth/callback`
-4. Final redirect to dashboard with installation ID
-
-### Data Retrieval
-- Base URL: `https://vmproxy.mgrd.cz/api/v1/{installation_id}/query_range`
-- Uses Prometheus/VictoriaMetrics query format
-- Queries specific metrics by device UUID
+### Data Retrieval (cloud)
+- Base URL: `https://vmproxy.senzomatic.com/api/v1/query_range`
+- Auth: `Authorization: Bearer <jwt_token>` (tenant scoping is embedded in the token)
+- Uses Prometheus/VictoriaMetrics query format, filtered by device UUID
 
 ### Example Queries
 ```
 # Temperature
 round(avg(label_del(temperature_ambient_celsius{device_id="uuid"},"scrape_id"))by(device_id),0.01)
 
-# Relative Humidity  
+# Relative Humidity
 round(avg(label_del(rel_humidity_ambient_pct{device_id="uuid"},"scrape_id"))by(device_id),0.01)
 
-# Wood Moisture (complex query for different device types)
+# Wood Moisture (source metric differs by device model)
 round(avg(label_del((moisture_humidity_pct{device_id="uuid",device_model="MHT02"} or moisture_resistance_pct{device_id="uuid",device_model!="MHT02"} or moisture_pct{device_id="uuid",device_model!="MHT02"}),"scrape_id"))by(device_id),0.01)
 ```
 
 ## Troubleshooting
 
-### Authentication Issues
-- Verify your credentials work on the Senzomatic web portal
-- Check Home Assistant logs for authentication errors
-- The integration uses the same login as https://erp.mgrd.cz
+### Cannot connect
+- Verify the IP address is correct and the Central Unit is reachable: open `http://<central-unit-ip>/` in a browser — you should see the unit's web page.
+- Make sure Home Assistant and the Central Unit are on the same network / VLAN.
 
-### No Sensors Found
-- Ensure your account has access to moisture monitoring devices
-- Check that devices are online and reporting data
-- Look for device parsing errors in logs
+### No sensors found
+- Confirm devices are online and reporting in the Senzomatic portal.
+- Only devices that return data for at least one metric are added.
 
-### Data Not Updating
-- Integration polls every 5 minutes by default
-- Check network connectivity to mgrd.cz domains
-- Verify authentication hasn't expired (automatically re-authenticates)
+### Data not updating
+- The integration polls every 5 minutes.
+- Because values come from the cloud, check the Central Unit has internet access and Home Assistant can reach `vmproxy.senzomatic.com`.
+- If the unit's token is rotated, the integration drops the cached token and re-reads it from the Central Unit on the next cycle.
 
-## Development Notes
-
-This integration was created by analyzing network traffic from the Senzomatic web interface:
-
-1. **Login analyzed**: Forms, CSRF tokens, redirects
-2. **API endpoints discovered**: VictoriaMetrics queries  
-3. **Device discovery**: HTML parsing for device information
-4. **Data format**: JSON responses with time series data
-
-The integration mimics browser behavior to access the private API endpoints.
+### Upgrading from 1.x
+Version 1.x used your Senzomatic account credentials. On upgrade, the integration will prompt you to **re-authenticate** — just enter the Central Unit's IP address.
 
 ## License
 
@@ -140,4 +138,4 @@ This project is licensed under the MIT License.
 
 ## Disclaimer
 
-This integration is not officially supported by MoistureGuard or Senzomatic. Use at your own risk. 
+This integration is not officially supported by Senzomatic. Use at your own risk.
