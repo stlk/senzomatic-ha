@@ -31,6 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if CONF_HOST not in entry.data:
         raise ConfigEntryAuthFailed("Central Unit IP address required")
 
+    session = None
     try:
         # Create custom session with up-to-date SSL context
         ssl_context = await hass.async_add_executor_job(
@@ -55,6 +56,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info("Senzomatic integration setup completed successfully")
         return True
     except Exception as exception:
+        if session is not None:
+            await session.close()
         _LOGGER.error(
             "Failed to set up Senzomatic integration: %s",
             exception,
